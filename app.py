@@ -13,7 +13,7 @@ def process():
     sender = data["from"]
     message = data["message"]
     print(f'message {message} recieved from {sender}')
-    send_sms(sender, message)
+    send_sms(sender, 'Hi '+message)
     ret =  {"message": "processed"}
     return jsonify(ret), 200
 
@@ -23,9 +23,9 @@ def send_sms(receptor, message):
     """
     url = 'https://api.kavenegar.com/v1/{config.API-KEY}/sms/send.json'
     data = {"message": message,
-    "receptor": receptor}
-    responce= request.post(data)
-    print(f"message *{message}* sent. status code os {responce.status_code}")
+            "receptor": receptor}
+    res= request.post(data)
+    print(f"message *{message}* sent. status code os {res.status_code}")
 
 
 def check_serial():
