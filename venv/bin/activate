@@ -46,7 +46,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV='/home/mohammad/Documents/Projects/SMS_Verify/venv'
+VIRTUAL_ENV='/home/mohammad/Documents/Projects/sms_serial_verification/venv'
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"
