@@ -1,24 +1,16 @@
 from flask import Flask, jsonify, request
 from pandas import read_excel
-import sqlite3
+import sqlite3,re
 import config
 
 app = Flask(__name__)
 
-
-@app.route('/v1/process', methods=['POST'])
-def process():
-    """this is a callback from kavenegar. will get sender and message
-    and will check if it is valid. then answer back
-    """
-    data = request.form
-    # import pdb; pdb.set_trace()
-    sender = data["from"]
-    message = normalize_string(data["message"])
-    print(f'message {message} recieved from {sender}')
-    send_sms(sender, 'Hi '+message)
-    ret =  {"message": "processed"}
+@app.route('/v1/ok')
+def health_check():
+    ret = {'message': 'ok'}
     return jsonify(ret), 200
+
+
 
 
 def send_sms(receptor, message):
@@ -37,6 +29,7 @@ def normalize_string(str):
     for i in range(len(from_char)):
         str = str.replace(from_char[i], to_char[i])
     str = str.upper()
+    str = re.sub(r'\W+', '', str) # remove any non alpha numeric  
     return(str)
 
 
@@ -109,12 +102,44 @@ def import_database_from_excel(filepath):
     conn.commit()
     cur.close()
     return (serial_counter, invalid_counter)
-def check_serial():
-    pass
 
+
+def check_serial(serial):
+
+    conn = sqlite3.connect(config.DATABASE_FILE_PATH)
+    cur = conn.cursor()
+    query = f"SELECT * FROM invalids WHERE invalid_serial == '{serial}'"
+    results = cur.execute(query)
+    if len(results.fetchall()) == 1:
+        return 'this serial is among failed ones' # TODO: return the string provided by the cutomer
+    
+    query = f"SELECT * FROM serials WHERE start_serial < '{serial}' and end_serial > '{serial}'"
+    print(query)
+    results = cur.execute(query)
+    if len(results.fetchall()) == 1:
+        return 'I found your serial' # TODO: return the string provided by the cutomer
+
+    return 'it was not in the db'
+
+@app.route('/v1/process', methods=['POST'])
+def process():
+    """this is a callback from kavenegar. will get sender and message
+    and will check if it is valid. then answer back
+    """
+    data = request.form
+    # import pdb; pdb.set_trace()
+    sender = data["from"]
+    message = normalize_string(data["message"])
+    print(f'message {message} recieved from {sender}') # logging
+    answer = check_serial(message)
+    send_sms(sender, answer)
+    ret =  {"message": "processed"}
+    return jsonify(ret), 200
 
 if __name__ == "__main__":
     # send_sms('000', 'erfvs')
-    #app.run("0.0.0.0", 5000, debug=True)
-    a,b = import_database_from_excel('data.xlsx')
-    print(f'inserted {a} rows and {b} invalids')
+    import_database_from_excel('data.xlsx')
+    print(check_serial(normalize_string('jm200')))
+    app.run("0.0.0.0", 5000, debug=True)
+    #a,b = import_database_from_excel('data.xlsx')
+    #print(f'inserted {a} rows and {b} invalids')
