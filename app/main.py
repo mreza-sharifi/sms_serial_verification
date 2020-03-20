@@ -9,6 +9,8 @@ from flask import Flask, jsonify, request, Response, redirect, url_for, session,
 from werkzeug.utils import secure_filename
 import requests
 import config
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 
 UPLOAD_FOLDER = config.UPLOAD_FOLDER
@@ -17,7 +19,9 @@ ALLOWED_EXTENSIONS = config.ALLOWED_EXTENSIONS
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
+limiter = Limiter(
+    app,
+    key_func=get_remote_address)
 
 # config
 app.config.update(
@@ -92,6 +96,7 @@ def home():
  
 # somewhere to login
 @app.route("/login", methods=["GET", "POST"])
+@limiter.limit("5 per minute")
 def login():
     if request.method == 'POST': #TODO: stop the brute force
         username = request.form['username']
