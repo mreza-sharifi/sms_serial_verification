@@ -32,9 +32,7 @@ app.config.update(
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
-
-
-
+CALL_BACK_TOKEN = config.CALL_BACK_TOKEN
 
 # silly user model
 class User(UserMixin):
@@ -262,7 +260,7 @@ def check_serial(serial):
 
     return 'it was not in the db'
 
-@app.route('/v1/process', methods=['POST'])
+@app.route(f'/v1/{CALL_BACK_TOKEN}/process', methods=['POST'])
 def process():
     """this is a callback from kavenegar. will get sender and message
     and will check if it is valid. then answer back
