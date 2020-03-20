@@ -45,8 +45,6 @@ class User(UserMixin):
     def __repr__(self):
         return "%d" % (self.id)
 
-
-# create some users with ids 1 to 20       
 user = User(0)
 
 def allowed_file(filename):
