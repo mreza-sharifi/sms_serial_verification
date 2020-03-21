@@ -4,7 +4,7 @@ import re
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user
 from pandas import read_excel
 
-from flask import Flask, jsonify, request, Response, redirect, url_for, session, abort,flash
+from flask import Flask, jsonify, request, Response, redirect, url_for, abort,flash,render_template
 
 from werkzeug.utils import secure_filename
 import requests
@@ -59,57 +59,41 @@ def home():
     if request.method == 'POST':
         # check if the post request has the file part
         if 'file' not in request.files:
-            flash('No file part')
-            session['message'] = 'No selected file'
+            flash('No selected file')
             return redirect(request.url)
         file = request.files['file']
         # if user does not select file, browser also
         # submit an empty part without filename
         if file.filename == '':
             flash('No selected file')
-            session['message'] = 'No selected file'
+            
             return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
             rows, failures = import_database_from_excel(file_path)
-            session['message'] = f'Imported {rows} rows of serials and {failures} rows of failure'
+            flash(f'Imported {rows} rows of serials and {failures} rows of failure')
             os.remove(file_path)
             return redirect('/')
-    message = session.get('message', '')
-    session['message'] = ''
-    return f'''
-    <!doctype html>
-    <title>Upload new File</title>
-    <h1>Upload new File</h1>
-    <h3>{message}<h3>
-    <form method=post enctype=multipart/form-data>
-      <input type=file name=file>
-      <input type=submit value=Upload>
-    </form>
-    '''
+    
+    return render_template('index.html')
  
 # somewhere to login
 @app.route("/login", methods=["GET", "POST"])
-@limiter.limit("5 per minute")
+@limiter.limit("10 per minute")
 def login():
     if request.method == 'POST': #TODO: stop the brute force
         username = request.form['username']
         password = request.form['password']        
         if password == config.PASSWORD and username == config.USERNAME:
             login_user(user)
-            return redirect(request.args.get("next")) #TODO: check url validity
+            return redirect('/') #TODO: check url validity
         else:
             return abort(401)
     else:
-        return Response('''
-        <form action="" method="post">
-            <p><input type=text name=username>
-            <p><input type=password name=password>
-            <p><input type=submit value=Login>
-        </form>
-        ''')
+        return render_template('login.html')
+
 
 
 # somewhere to logout
@@ -117,13 +101,15 @@ def login():
 @login_required
 def logout():
     logout_user()
-    return Response('<p>Logged out</p>')
+    flash('Logged Out')
+    return redirect('/login')
 
 
 # handle login failed
 @app.errorhandler(401)
 def page_not_found(error):
-    return Response('<p>Login failed</p>')
+    flash('Login Problem')
+    return redirect('/login')
      
     
 # callback to reload the user object        
