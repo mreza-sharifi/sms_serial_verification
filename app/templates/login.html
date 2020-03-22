@@ -22,31 +22,32 @@
                                     <title>My Application</title>
                                     
                                     <div class="card-body">
-                                        {% with messages = get_flashed_messages() %}
+                                        {% with messages = get_flashed_messages(with_categories=true) %}
                                         {% if messages %}
-                                        {% for message in messages %}
-                                        <div class="alert alert-info" role="alert">
-                                            {{ message }}
-                                           </div>
-                                        {% endfor %}
-                                        </ul>
-                                    
+                                            {% for category, message in messages %}
+                                            <div class="alert alert-{{ category }} alert-dimissible" role="alert">
+                                                {{ message }}
+                                                <button type="button" class="close" data-dismiss="alert" aria-label="close">
+                                                    <span aria-hidden="true">&times;</span>
+                                                </button>
+                                               </div>
+                                            {% endfor %}
+                                            </ul>
                                         {% endif %}
                                         {% endwith %}
                                         {% block body %}{% endblock %}
                                     
                                             <form action="" method="post">
-                                            <div class="form-group"><label class="small mb-1" for="inputUsername">Email</label><input class="form-control py-4" id="inputUsername" type="text" placeholder="Enter username" name="username"/></div>
-                                            <div class="form-group"><label class="small mb-1" for="inputPassword">Password</label><input class="form-control py-4" id="inputPassword" type="password" placeholder="Enter password" name="password"/></div>
-                                            
-                                            <div class="form-group d-flex align-items-center justify-content-between mt-4 mb-0"><input type="submit" class="btn btn-primary" value="Login"></div>
+                                                <div class="form-group"><label class="small mb-1" for="inputUsername">Email</label><input class="form-control py-4" id="inputUsername" type="text" placeholder="Enter username" name="username"/></div>
+                                                <div class="form-group"><label class="small mb-1" for="inputPassword">Password</label><input class="form-control py-4" id="inputPassword" type="password" placeholder="Enter password" name="password"/></div>
+                                                <div class="form-group d-flex align-items-center justify-content-between mt-4 mb-0"><input type="submit" class="btn btn-primary" value="Login"></div>
                                         </form>
                                     </div>
                                    
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div>/
                 </main>
             </div>
             <div id="layoutAuthentication_footer">

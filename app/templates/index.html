@@ -58,12 +58,14 @@
                 <main>
                     <div class="container-fluid">
                         <h1 class="mt-4">Dashboard</h1>
-                        
-                        {% with messages = get_flashed_messages() %}
+                        {% with messages = get_flashed_messages(with_categories=true) %}
                         {% if messages %}
-                            {% for message in messages %}
-                            <div class="alert alert-warning" role="alert">
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{category}} alert-dimissible" role="alert">
                                 {{ message }}
+                                <button type="button" class="close" data-dismiss="alert" aria-label="close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
                                </div>
                             {% endfor %}
                             </ul>
@@ -121,13 +123,13 @@
                             </div>
                             <div class="col-xl-6">
                                 <div class="card mb-4">
-                                    <div class="card-header"><i class="fas fa-chart-bar mr-1"></i>Update DB with Excel file</div>
+                                    <div class="card-header"><i class="fas fa-database mr-1"></i>Update DB with Excel file</div>
                                     <div class="card-body">
                                         
                                             
                                                 <form method=post enctype=multipart/form-data>
                                                     
-                                                    <div class="input-group">
+                                                <div class="input-group">
                                                 <div class="input-group-prepend">
                                                     
                                                     <span class="input-group" id="inputGroupFileAddon01"><input type="submit" value="Upload"></span>
@@ -210,5 +212,11 @@
         <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js" crossorigin="anonymous"></script>
         <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js" crossorigin="anonymous"></script>
         <script src="/static/assets/demo/datatables-demo.js"></script>
+        <script>
+            $('#inputGroupFile01').on('change',function(){
+                    var fileName = $(this).val().split('\\').pop();
+                    $(this).next('.custom-file-label').html(fileName);
+            })
+        </script>
     </body>
 </html>

@@ -1,7 +1,7 @@
 import os
 import sqlite3
 import re
-from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user
+from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 from pandas import read_excel
 
 from flask import Flask, jsonify, request, Response, redirect, url_for, abort,flash,render_template
@@ -59,13 +59,13 @@ def home():
     if request.method == 'POST':
         # check if the post request has the file part
         if 'file' not in request.files:
-            flash('No selected file')
+            flash('No file part', 'danger')
             return redirect(request.url)
         file = request.files['file']
         # if user does not select file, browser also
         # submit an empty part without filename
         if file.filename == '':
-            flash('No selected file')
+            flash('No selected file', 'danger')
             
             return redirect(request.url)
         if file and allowed_file(file.filename):
@@ -73,7 +73,7 @@ def home():
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
             rows, failures = import_database_from_excel(file_path)
-            flash(f'Imported {rows} rows of serials and {failures} rows of failure')
+            flash(f'Imported {rows} rows of serials and {failures} rows of failure', 'success')
             os.remove(file_path)
             return redirect('/')
     
@@ -83,6 +83,9 @@ def home():
 @app.route("/login", methods=["GET", "POST"])
 @limiter.limit("10 per minute")
 def login():
+    # flash('Please Log in', 'info')
+    if current_user.is_authenticated:
+        return redirect('/')
     if request.method == 'POST': #TODO: stop the brute force
         username = request.form['username']
         password = request.form['password']        
@@ -101,14 +104,14 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash('Logged Out')
+    flash('Logged Out', 'success')
     return redirect('/login')
 
 
 # handle login failed
 @app.errorhandler(401)
 def page_not_found(error):
-    flash('Login Problem')
+    flash('Login Problem', 'danger')
     return redirect('/login')
      
     
@@ -194,8 +197,13 @@ def import_database_from_excel(filepath):
     for index,(line, ref, desc, start_serial, end_serial, date) in df.iterrows():
         start_serial = normalize_string(start_serial)
         end_serial = normalize_string(end_serial)
-        query = f'INSERT INTO serials (id, ref, desc, start_serial, end_serial, date) VALUES("{line}", "{ref}", "{desc}", "{start_serial}", "{end_serial}", "{date}");'
-        cur.execute(query)
+        #print((line, ref, desc, start_serial, end_serial, date))
+        #query = f'INSERT INTO serials (id, ref, desc, start_serial, end_serial, date) VALUES("{line}", "{ref}", "{desc}", "{start_serial}", "{end_serial}", "{date}");'
+        cur.execute("INSERT INTO serials VALUES (?, ?, ?, ?, ?, ?)", (line, ref, desc, start_serial, end_serial, str(date)))
+        #cur.execute("INSERT INTO PROCESSED_SMS (status, sender, message, answer, date) VALUES (%s, %s, %s, %s, %s)", (status, sender, message, answer, now))
+
+        #print(query)
+        #cur.execute(query)
         # TODO: do some more error handling
         if serial_counter % 10 == 0:
             conn.commit()
@@ -215,8 +223,9 @@ def import_database_from_excel(filepath):
     for index, (failed_serial, ) in df.iterrows():
         #failed_serial = failed_serial_row[0]
 
-        query = f'INSERT INTO invalids VALUES("{failed_serial}");'
-        cur.execute(query)
+        #query = f'INSERT INTO invalids VALUES("{failed_serial}");'
+        cur.execute('INSERT INTO invalids VALUES (?)', (failed_serial, ))
+        #cur.execute(query)
         # TODO: do some more error handling
         if invalid_counter % 10 == 0:
             conn.commit()
@@ -231,14 +240,17 @@ def check_serial(serial):
     ''' this function will check the serial'''
     conn = sqlite3.connect(config.DATABASE_FILE_PATH)
     cur = conn.cursor()
-    query = f"SELECT * FROM invalids WHERE invalid_serial == '{serial}'"
-    results = cur.execute(query)
+    #query = f"SELECT * FROM invalids WHERE invalid_serial == '{serial}'"
+    results = cur.execute("SELECT * FROM invalids WHERE invalid_serial == ?", (serial, ))
+    #results = cur.execute(query)
     if len(results.fetchall()) > 0:
         return 'this serial is among failed ones' # TODO: return the string provided by the cutomer
     
-    query = f"SELECT * FROM serials WHERE start_serial <= '{serial}' and end_serial >= '{serial}'"
+    #query = f"SELECT * FROM serials WHERE start_serial <= '{serial}' and end_serial >= '{serial}'"
+    results = cur.execute("SELECT * FROM serials WHERE start_serial <= ? and end_serial >= ?", (serial, serial))
+
     #print(query)
-    results = cur.execute(query)
+    #results = cur.execute(query)
     if len(results.fetchall()) == 1:
         return 'I found your serial' # TODO: return the string provided by the cutomer
 
@@ -260,5 +272,6 @@ def process():
     return jsonify(ret), 200
 
 if __name__ == "__main__":
-
+    import_database_from_excel('data.xlsx')
+    check_serial('JJ100')
     app.run("0.0.0.0", 5000, debug=True)
