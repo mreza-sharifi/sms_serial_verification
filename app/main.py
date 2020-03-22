@@ -1,17 +1,15 @@
 import os
-import sqlite3
 import re
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 from pandas import read_excel
-
+import MySQLdb
 from flask import Flask, jsonify, request, Response, redirect, url_for, abort,flash,render_template
-
 from werkzeug.utils import secure_filename
 import requests
 import config
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-
+import sqlite3
 
 UPLOAD_FOLDER = config.UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = config.ALLOWED_EXTENSIONS
@@ -32,6 +30,9 @@ app.config.update(
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
+login_manager.login_message_category = "warning"
+db=MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD,db=config.MYSQL_DB_NAME)
+
 CALL_BACK_TOKEN = config.CALL_BACK_TOKEN
 
 # silly user model
@@ -110,12 +111,15 @@ def logout():
 
 # handle login failed
 @app.errorhandler(401)
-def page_not_found(error):
+def login_problem(error):
     flash('Login Problem', 'danger')
     return redirect('/login')
      
-    
-# callback to reload the user object        
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('404.html'), 404  
+# callback to reload the user object 
+#       
 @login_manager.user_loader
 def load_user(userid):
     return User(userid)
@@ -271,7 +275,6 @@ def process():
     send_sms(sender, answer)
     ret =  {"message": "processed"}
     return jsonify(ret), 200
-
 if __name__ == "__main__":
     import_database_from_excel('data.xlsx')
     check_serial('JJ100')
