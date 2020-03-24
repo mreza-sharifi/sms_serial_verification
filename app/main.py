@@ -6,9 +6,9 @@ import MySQLdb
 from flask import Flask, jsonify, request, Response, redirect, url_for, abort,flash,render_template
 from werkzeug.utils import secure_filename
 import requests
-import config
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import config
 # import sqlite3
 
 UPLOAD_FOLDER = config.UPLOAD_FOLDER
@@ -183,7 +183,7 @@ def import_database_from_excel(filepath):
     # TODO: make sure that the data is imported correctly, we need to backup the old one.
     # TODO: do some normalization
     ## our sqlite database will contain two tables: serials and invalids
-    db=MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD,db=config.MYSQL_DB_NAME)
+    db = MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD, db=config.MYSQL_DB_NAME)
 
     cur = db.cursor()
     # remove the serials table if exists, then create new one
@@ -243,7 +243,7 @@ def import_database_from_excel(filepath):
 def check_serial(serial):
     ''' this function will check the serial'''
     #conn = sqlite3.connect(config.DATABASE_FILE_PATH)
-    db=MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD,db=config.MYSQL_DB_NAME)
+    db = MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD, db=config.MYSQL_DB_NAME)
 
     cur = db.cursor()
     #cur = conn.cursor()
@@ -252,6 +252,7 @@ def check_serial(serial):
     results = cur.execute("SELECT * FROM invalids WHERE invalid_serial = %s", (serial, ))
     #results = cur.execute(query)
     if results > 0:
+        db.close()
         return 'this serial is among failed ones' # TODO: return the string provided by the cutomer
     
     #query = f"SELECT * FROM serials WHERE start_serial <= '{serial}' and end_serial >= '{serial}'"
@@ -259,12 +260,18 @@ def check_serial(serial):
 
     #print(query)
     #results = cur.execute(query)
+    if results > 1:
+        ret = cur.fetchone()
+        
+        return 'I found your serial: '
     if results == 1:
         ret = cur.fetchone()
-        return 'I found your serial: '+ret[2] # TODO: return the string provided by the cutomer
-
-    return 'it was not in the db'
+        desc = ret[2]
+        db.close()
+        return 'I found your serial: ' + desc # TODO: return the string provided by the cutomer
     db.close()
+    return 'it was not in the db'
+    
 @app.route(f'/v1/{CALL_BACK_TOKEN}/process', methods=['POST'])
 def process():
     """this is a callback from kavenegar. will get sender and message
@@ -277,7 +284,7 @@ def process():
     print(f'message {message} recieved from {sender}') # logging
     answer = check_serial(message)
     send_sms(sender, answer)
-    ret =  {"message": "processed"}
+    ret = {"message": "processed"}
     return jsonify(ret), 200
 if __name__ == "__main__":
     # import_database_from_excel('data.xlsx')
