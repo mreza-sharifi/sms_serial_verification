@@ -9,7 +9,7 @@ import requests
 import config
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-import sqlite3
+# import sqlite3
 
 UPLOAD_FOLDER = config.UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = config.ALLOWED_EXTENSIONS
@@ -31,7 +31,6 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
 login_manager.login_message_category = "warning"
-db=MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD,db=config.MYSQL_DB_NAME)
 
 CALL_BACK_TOKEN = config.CALL_BACK_TOKEN
 
@@ -169,7 +168,7 @@ def normalize_string(data,fixed_size=30):
 def import_database_from_excel(filepath):
     """gets an excel file name and imports lookup data (data and failures) from it 
         the (1) sheet contains serial data like:
-         Row	Reference_Number	Description	Start_Serial	End_Serial	Date
+         Row	Reference_Number	descriptonription	Start_Serial	End_Serial	Date
          and the (0) contains a column of invalid serials.
          This data will be wrriten into the qlite database located at config.DATABASE_FILE_PATH
         in two tables."serials" and "invalids" 
@@ -179,48 +178,49 @@ def import_database_from_excel(filepath):
         """
     # df contains lookup data in the form of
 
-    # Row	Reference Number	Description	Start Serial	End Serial	Date
+    # Row	Reference Number	descriptonription	Start Serial	End Serial	Date
     
     # TODO: make sure that the data is imported correctly, we need to backup the old one.
     # TODO: do some normalization
     ## our sqlite database will contain two tables: serials and invalids
-    conn = sqlite3.connect(config.DATABASE_FILE_PATH)
-    cur = conn.cursor()
+    db=MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD,db=config.MYSQL_DB_NAME)
+
+    cur = db.cursor()
     # remove the serials table if exists, then create new one
-    cur.execute('DROP TABLE IF EXISTS serials')
+    cur.execute('DROP TABLE IF EXISTS serials;')
     cur.execute("""CREATE TABLE IF NOT EXISTS serials (
         id INTEGER PRIMARY KEY,
-        ref TEXT,
-        desc TEXT,
-        start_serial TEXT,
-        end_serial TEXT,
-        date DATE);""")
-    
+        ref VARCHAR(200),
+        descripton VARCHAR(200),
+        start_serial CHAR(30),
+        end_serial CHAR(30),
+        date DATETIME);""")
+    db.commit()
     df = read_excel(filepath, 0)
     serial_counter = 0
-    for index,(line, ref, desc, start_serial, end_serial, date) in df.iterrows():
+    for index,(line, ref, descripton, start_serial, end_serial, date) in df.iterrows():
         start_serial = normalize_string(start_serial)
         end_serial = normalize_string(end_serial)
-        #print((line, ref, desc, start_serial, end_serial, date))
-        #query = f'INSERT INTO serials (id, ref, desc, start_serial, end_serial, date) VALUES("{line}", "{ref}", "{desc}", "{start_serial}", "{end_serial}", "{date}");'
-        cur.execute("INSERT INTO serials VALUES (?, ?, ?, ?, ?, ?)", (line, ref, desc, start_serial, end_serial, str(date)))
+        #import pdb; pdb.set_trace()
+        #query = f'INSERT INTO serials (id, ref, descripton, start_serial, end_serial, date) VALUES("{line}", "{ref}", "{descripton}", "{start_serial}", "{end_serial}", "{date}");'
+        cur.execute("INSERT INTO serials VALUES (%s, %s, %s, %s, %s, %s);", (line, ref, descripton, start_serial, end_serial, date))
         #cur.execute("INSERT INTO PROCESSED_SMS (status, sender, message, answer, date) VALUES (%s, %s, %s, %s, %s)", (status, sender, message, answer, now))
 
         #print(query)
         #cur.execute(query)
         # TODO: do some more error handling
         if serial_counter % 10 == 0:
-            conn.commit()
+            db.commit()
 
         serial_counter += 1
-        #print(line, ref, desc, start_serial, end_serial, date)
-    conn.commit()
+        #print(line, ref, descripton, start_serial, end_serial, date)
+    db.commit()
 
      # remove the invalids table if exists, then create new one
-    cur.execute('DROP TABLE IF EXISTS invalids')
+    cur.execute('DROP TABLE IF EXISTS invalids;')
     cur.execute("""CREATE TABLE IF NOT EXISTS invalids (
-        invalid_serial TEXT);""")
-    conn.commit()
+        invalid_serial CHAR(200));""")
+    db.commit()
     # now lets save the invalid serials
     df = read_excel(filepath, 1) # sheet 1 contain failed serial numbers.only one column  exists.
     invalid_counter = 0
@@ -228,39 +228,43 @@ def import_database_from_excel(filepath):
         #failed_serial = failed_serial_row[0]
         failed_serial = normalize_string(failed_serial)
         #query = f'INSERT INTO invalids VALUES("{failed_serial}");'
-        cur.execute('INSERT INTO invalids VALUES (?)', (failed_serial, ))
+        cur.execute('INSERT INTO invalids VALUES (%s);', (failed_serial, ))
         #cur.execute(query)
         # TODO: do some more error handling
         if invalid_counter % 10 == 0:
-            conn.commit()
+            db.commit()
 
         invalid_counter += 1
-    conn.commit()
-    cur.close()
+    db.commit()
+    db.close()
     return (serial_counter, invalid_counter)
 
 
 def check_serial(serial):
     ''' this function will check the serial'''
-    conn = sqlite3.connect(config.DATABASE_FILE_PATH)
-    cur = conn.cursor()
+    #conn = sqlite3.connect(config.DATABASE_FILE_PATH)
+    db=MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD,db=config.MYSQL_DB_NAME)
+
+    cur = db.cursor()
+    #cur = conn.cursor()
     #query = f"SELECT * FROM invalids WHERE invalid_serial == '{serial}'"
     serial = normalize_string(serial)
-    results = cur.execute("SELECT * FROM invalids WHERE invalid_serial == ?", (serial, ))
+    results = cur.execute("SELECT * FROM invalids WHERE invalid_serial = %s", (serial, ))
     #results = cur.execute(query)
-    if len(results.fetchall()) > 0:
+    if results > 0:
         return 'this serial is among failed ones' # TODO: return the string provided by the cutomer
     
     #query = f"SELECT * FROM serials WHERE start_serial <= '{serial}' and end_serial >= '{serial}'"
-    results = cur.execute("SELECT * FROM serials WHERE start_serial <= ? and end_serial >= ?", (serial, serial))
+    results = cur.execute("SELECT * FROM serials WHERE start_serial <= %s and end_serial >= %s", (serial, serial))
 
     #print(query)
     #results = cur.execute(query)
-    if len(results.fetchall()) == 1:
-        return 'I found your serial' # TODO: return the string provided by the cutomer
+    if results == 1:
+        ret = cur.fetchone()
+        return 'I found your serial: '+ret[2] # TODO: return the string provided by the cutomer
 
     return 'it was not in the db'
-
+    db.close()
 @app.route(f'/v1/{CALL_BACK_TOKEN}/process', methods=['POST'])
 def process():
     """this is a callback from kavenegar. will get sender and message
@@ -276,6 +280,10 @@ def process():
     ret =  {"message": "processed"}
     return jsonify(ret), 200
 if __name__ == "__main__":
-    import_database_from_excel('data.xlsx')
-    check_serial('JJ100')
+    # import_database_from_excel('data.xlsx')
+    # ss = ['','1','A','JM0000000000000000000000000109',
+    #     'JM0000000000000000000000000100','JJ0000000000000000000007654321','Jj0000000000000000000000000101']
+    
+    # for s in ss:
+    #     print(s,check_serial(s))
     app.run("0.0.0.0", 5000, debug=True)
