@@ -1,5 +1,6 @@
 import os
 import re
+from datetime import datetime
 from flask_login import LoginManager, UserMixin, login_required, login_user, logout_user, current_user
 from pandas import read_excel
 import MySQLdb
@@ -183,9 +184,11 @@ def import_database_from_excel(filepath):
     # TODO: make sure that the data is imported correctly, we need to backup the old one.
     # TODO: do some normalization
     ## our sqlite database will contain two tables: serials and invalids
-    db = MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD, db=config.MYSQL_DB_NAME)
-
-    cur = db.cursor()
+    db = MySQLdb.connect(host=config.MYSQL_host, 
+                        user=config.MYSQL_USERNAME, 
+                        passwd=config.MYSQL_PASSWORD, 
+                        db=config.MYSQL_DB_NAME)
+    cur = db.cursor() 
     # remove the serials table if exists, then create new one
     cur.execute('DROP TABLE IF EXISTS serials;')
     cur.execute("""CREATE TABLE IF NOT EXISTS serials (
@@ -243,9 +246,11 @@ def import_database_from_excel(filepath):
 def check_serial(serial):
     ''' this function will check the serial'''
     #conn = sqlite3.connect(config.DATABASE_FILE_PATH)
-    db = MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD, db=config.MYSQL_DB_NAME)
-
-    cur = db.cursor()
+    db = MySQLdb.connect(host=config.MYSQL_host, 
+                        user=config.MYSQL_USERNAME, 
+                        passwd=config.MYSQL_PASSWORD, 
+                        db=config.MYSQL_DB_NAME)
+    cur = db.cursor()       
     #cur = conn.cursor()
     #query = f"SELECT * FROM invalids WHERE invalid_serial == '{serial}'"
     serial = normalize_string(serial)
@@ -293,14 +298,27 @@ def process():
     message = normalize_string(data["message"])
     print(f'message {message} recieved from {sender}') # logging
     answer = check_serial(message)
+
+    db = MySQLdb.connect(host=config.MYSQL_host, 
+                        user=config.MYSQL_USERNAME, 
+                        passwd=config.MYSQL_PASSWORD, 
+                        db=config.MYSQL_DB_NAME)
+    cur = db.cursor() 
+    now = datetime.now()
+    formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
+    cur.execute("INSERT INTO PROCESSED_SMS (sender, message, answer, date) VALUES (%s, %s, %s, %s)",(sender, message, answer, formatted_date))
+
+    db.commit()
+    db.close()
     send_sms(sender, answer)
     ret = {"message": "processed"}
     return jsonify(ret), 200
 if __name__ == "__main__":
-    # import_database_from_excel('data.xlsx')
+    import_database_from_excel('data.xlsx')
     # ss = ['','1','A','JM0000000000000000000000000109',
     #     'JM0000000000000000000000000100','JJ0000000000000000000007654321','Jj0000000000000000000000000101']
     
     # for s in ss:
     #     print(s,check_serial(s))
-    app.run("0.0.0.0", 5000, debug=True)
+    process('sender', 'jm104')
+    # app.run("0.0.0.0", 5000, debug=True)
