@@ -262,7 +262,6 @@ def check_serial(serial):
     #results = cur.execute(query)
     if results > 1:
         ret = cur.fetchone()
-        
         return 'I found your serial: '
     if results == 1:
         ret = cur.fetchone()
@@ -271,7 +270,18 @@ def check_serial(serial):
         return 'I found your serial: ' + desc # TODO: return the string provided by the cutomer
     db.close()
     return 'it was not in the db'
-    
+
+@app.route("/check_one_serial", methods=['POST'])
+@login_required
+def check_one_serial():
+    serial_to_check = request.form["serial"]
+    answer = check_serial(normalize_string(serial_to_check))
+    flash(answer, 'info')
+
+    return redirect('/')
+
+
+
 @app.route(f'/v1/{CALL_BACK_TOKEN}/process', methods=['POST'])
 def process():
     """this is a callback from kavenegar. will get sender and message
