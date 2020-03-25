@@ -78,7 +78,21 @@ def home():
             os.remove(file_path)
             return redirect('/')
     
-    return render_template('index.html')
+    db = MySQLdb.connect(host=config.MYSQL_host, 
+                        user=config.MYSQL_USERNAME, 
+                        passwd=config.MYSQL_PASSWORD, 
+                        db=config.MYSQL_DB_NAME)
+    cur = db.cursor() 
+    cur.execute("SELECT * FROM PROCESSED_SMS ORDER BY date DESC LIMIT 5000;")
+    all_smss = cur.fetchall()
+    smss = []
+    counter = 0
+    for sms in all_smss:
+        sender, message, answer, date = sms
+        smss.append({'sender':sender+'counter = '+str(counter), 'message':message, 'answer':answer, 'date':date})
+    #     print(smss)
+        counter +=  1
+    return render_template('index.html', data = {'smss':smss})
  
 # somewhere to login
 @app.route("/login", methods=["GET", "POST"])
@@ -312,7 +326,9 @@ def process():
     db.close()
     send_sms(sender, answer)
     ret = {"message": "processed"}
+
     return jsonify(ret), 200
+
 if __name__ == "__main__":
     import_database_from_excel('data.xlsx')
     # ss = ['','1','A','JM0000000000000000000000000109',
@@ -320,5 +336,5 @@ if __name__ == "__main__":
     
     # for s in ss:
     #     print(s,check_serial(s))
-    process('sender', 'jm104')
-    # app.run("0.0.0.0", 5000, debug=True)
+    #process('sender', 'jm104')
+    app.run("0.0.0.0", 5000, debug=True)
