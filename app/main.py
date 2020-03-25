@@ -88,11 +88,27 @@ def home():
     smss = []
     counter = 0
     for sms in all_smss:
-        sender, message, answer, date = sms
-        smss.append({'sender':sender+'counter = '+str(counter), 'message':message, 'answer':answer, 'date':date})
+        status, sender, message, answer, date = sms
+        smss.append({'status':status, 'sender':sender+'counter = '+str(counter), 'message':message, 'answer':answer, 'date':date})
     #     print(smss)
         counter +=  1
-    return render_template('index.html', data = {'smss':smss})
+    
+    cur.execute("SELECT count(*) FROM PROCESSED_SMS WHERE status = 'OK';")
+    num_ok = cur.fetchone()[0]
+
+    cur.execute("SELECT count(*) FROM PROCESSED_SMS WHERE status = 'FAILURE';")
+    num_failure = cur.fetchone()[0]
+
+    cur.execute("SELECT count(*) FROM PROCESSED_SMS WHERE status = 'DOUBLE';")
+    num_double = cur.fetchone()[0]
+
+    cur.execute("SELECT count(*) FROM PROCESSED_SMS WHERE status = 'NOT-FOUND';")
+    num_not_found = cur.fetchone()[0]
+
+
+
+
+    return render_template('index.html', data = {'smss':smss, 'ok':num_ok, 'failure':num_failure, 'double':num_double, 'not_found':num_not_found})
  
 # somewhere to login
 @app.route("/login", methods=["GET", "POST"])
@@ -211,7 +227,7 @@ def import_database_from_excel(filepath):
         descripton VARCHAR(200),
         start_serial CHAR(30),
         end_serial CHAR(30),
-        date DATETIME);""")
+        date DATETIME, INDEX(start_serial, end_serial));""")
     db.commit()
     df = read_excel(filepath, 0)
     serial_counter = 0
@@ -236,7 +252,7 @@ def import_database_from_excel(filepath):
      # remove the invalids table if exists, then create new one
     cur.execute('DROP TABLE IF EXISTS invalids;')
     cur.execute("""CREATE TABLE IF NOT EXISTS invalids (
-        invalid_serial CHAR(200));""")
+        invalid_serial CHAR(200), INDEX(invalid_serial));""")
     db.commit()
     # now lets save the invalid serials
     df = read_excel(filepath, 1) # sheet 1 contain failed serial numbers.only one column  exists.
@@ -272,7 +288,7 @@ def check_serial(serial):
     #results = cur.execute(query)
     if results > 0:
         db.close()
-        return 'this serial is among failed ones' # TODO: return the string provided by the cutomer
+        return 'FAILURE', 'this serial is among failed ones' # TODO: return the string provided by the cutomer
     
     #query = f"SELECT * FROM serials WHERE start_serial <= '{serial}' and end_serial >= '{serial}'"
     results = cur.execute("SELECT * FROM serials WHERE start_serial <= %s and end_serial >= %s", (serial, serial))
@@ -281,21 +297,21 @@ def check_serial(serial):
     #results = cur.execute(query)
     if results > 1:
         ret = cur.fetchone()
-        return 'I found your serial: '
+        return 'DOUBLE', 'I found your serial: '
     if results == 1:
         ret = cur.fetchone()
         desc = ret[2]
         db.close()
-        return 'I found your serial: ' + desc # TODO: return the string provided by the cutomer
+        return 'OK', 'I found your serial: ' + desc # TODO: return the string provided by the cutomer
     db.close()
-    return 'it was not in the db'
+    return 'NOT-FOUND', 'it was not in the db'
 
 @app.route("/check_one_serial", methods=['POST'])
 @login_required
 def check_one_serial():
     serial_to_check = request.form["serial"]
-    answer = check_serial(normalize_string(serial_to_check))
-    flash(answer, 'info')
+    status ,answer = check_serial(normalize_string(serial_to_check))
+    flash(f'{status} - {answer}', 'info')
 
     return redirect('/')
 
@@ -311,7 +327,7 @@ def process():
     sender = data["from"]
     message = normalize_string(data["message"])
     print(f'message {message} recieved from {sender}') # logging
-    answer = check_serial(message)
+    status ,answer = check_serial(message)
 
     db = MySQLdb.connect(host=config.MYSQL_host, 
                         user=config.MYSQL_USERNAME, 
@@ -320,7 +336,8 @@ def process():
     cur = db.cursor() 
     now = datetime.now()
     formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
-    cur.execute("INSERT INTO PROCESSED_SMS (sender, message, answer, date) VALUES (%s, %s, %s, %s)",(sender, message, answer, formatted_date))
+    cur.execute("INSERT INTO PROCESSED_SMS (status, sender, message, answer, date) VALUES (%s, %s, %s, %s, %s)",
+                                            (status, sender, message, answer, formatted_date))
 
     db.commit()
     db.close()
@@ -335,6 +352,6 @@ if __name__ == "__main__":
     #     'JM0000000000000000000000000100','JJ0000000000000000000007654321','Jj0000000000000000000000000101']
     
     # for s in ss:
-    #     print(s,check_serial(s))
-    #process('sender', 'jm104')
+        # print(s,check_serial(s))
+        # process('sender', s)
     app.run("0.0.0.0", 5000, debug=True)
