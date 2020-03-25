@@ -11,7 +11,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import config
 # import sqlite3
-
+MAX_FLASH = 10
 UPLOAD_FOLDER = config.UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = config.ALLOWED_EXTENSIONS
 
@@ -78,20 +78,19 @@ def home():
             os.remove(file_path)
             return redirect('/')
     
-    db = MySQLdb.connect(host=config.MYSQL_host, 
-                        user=config.MYSQL_USERNAME, 
-                        passwd=config.MYSQL_PASSWORD, 
-                        db=config.MYSQL_DB_NAME)
+    # db = MySQLdb.connect(host=config.MYSQL_host, 
+    #                     user=config.MYSQL_USERNAME, 
+    #                     passwd=config.MYSQL_PASSWORD, 
+    #                     db=config.MYSQL_DB_NAME)
+    
+    db = get_database_connection()
     cur = db.cursor() 
     cur.execute("SELECT * FROM PROCESSED_SMS ORDER BY date DESC LIMIT 5000;")
     all_smss = cur.fetchall()
     smss = []
-    counter = 0
     for sms in all_smss:
         status, sender, message, answer, date = sms
-        smss.append({'status':status, 'sender':sender+'counter = '+str(counter), 'message':message, 'answer':answer, 'date':date})
-    #     print(smss)
-        counter +=  1
+        smss.append({'status':status, 'sender':sender+'counter = ', 'message':message, 'answer':answer, 'date':date})
     
     cur.execute("SELECT count(*) FROM PROCESSED_SMS WHERE status = 'OK';")
     num_ok = cur.fetchone()[0]
@@ -214,61 +213,76 @@ def import_database_from_excel(filepath):
     # TODO: make sure that the data is imported correctly, we need to backup the old one.
     # TODO: do some normalization
     ## our sqlite database will contain two tables: serials and invalids
-    db = MySQLdb.connect(host=config.MYSQL_host, 
-                        user=config.MYSQL_USERNAME, 
-                        passwd=config.MYSQL_PASSWORD, 
-                        db=config.MYSQL_DB_NAME)
+    # db = MySQLdb.connect(host=config.MYSQL_host, 
+    #                     user=config.MYSQL_USERNAME, 
+    #                     passwd=config.MYSQL_PASSWORD, 
+    #                     db=config.MYSQL_DB_NAME)
+    db = get_database_connection()
+
     cur = db.cursor() 
     # remove the serials table if exists, then create new one
-    cur.execute('DROP TABLE IF EXISTS serials;')
-    cur.execute("""CREATE TABLE IF NOT EXISTS serials (
-        id INTEGER PRIMARY KEY,
-        ref VARCHAR(200),
-        descripton VARCHAR(200),
-        start_serial CHAR(30),
-        end_serial CHAR(30),
-        date DATETIME, INDEX(start_serial, end_serial));""")
-    db.commit()
+    try:
+        cur.execute('DROP TABLE IF EXISTS serials;')
+        cur.execute("""CREATE TABLE IF NOT EXISTS serials (
+            id INTEGER PRIMARY KEY,
+            ref VARCHAR(200),
+            descripton VARCHAR(200),
+            start_serial CHAR(30),
+            end_serial CHAR(30),
+            date DATETIME, INDEX(start_serial, end_serial));""")
+        db.commit()
+    except:
+        flash('problem dropping and creating new serial table in database', 'danger')
+
+    
     df = read_excel(filepath, 0)
     serial_counter = 0
+    total_flashes = 0
     for index,(line, ref, descripton, start_serial, end_serial, date) in df.iterrows():
-        start_serial = normalize_string(start_serial)
-        end_serial = normalize_string(end_serial)
-        #import pdb; pdb.set_trace()
-        #query = f'INSERT INTO serials (id, ref, descripton, start_serial, end_serial, date) VALUES("{line}", "{ref}", "{descripton}", "{start_serial}", "{end_serial}", "{date}");'
-        cur.execute("INSERT INTO serials VALUES (%s, %s, %s, %s, %s, %s);", (line, ref, descripton, start_serial, end_serial, date))
-        #cur.execute("INSERT INTO PROCESSED_SMS (status, sender, message, answer, date) VALUES (%s, %s, %s, %s, %s)", (status, sender, message, answer, now))
-
-        #print(query)
-        #cur.execute(query)
-        # TODO: do some more error handling
-        if serial_counter % 10 == 0:
-            db.commit()
-
         serial_counter += 1
-        #print(line, ref, descripton, start_serial, end_serial, date)
-    db.commit()
+        try:
+            
+            start_serial = normalize_string(start_serial)
+            end_serial = normalize_string(end_serial)
+            cur.execute("INSERT INTO serials VALUES (%s, %s, %s, %s, %s, %s);", (line, ref, descripton, start_serial, end_serial, date))
+            db.commit()
+        except:
 
-     # remove the invalids table if exists, then create new one
-    cur.execute('DROP TABLE IF EXISTS invalids;')
-    cur.execute("""CREATE TABLE IF NOT EXISTS invalids (
-        invalid_serial CHAR(200), INDEX(invalid_serial));""")
-    db.commit()
+            total_flashes+=1
+            if total_flashes < MAX_FLASH:
+                flash(f'Error inserting line {serial_counter} from serials sheet 0', 'danger')
+            else:
+                flash(f'Too many errors', 'danger')
+            
+        db.commit()
+
+        
+    try:
+
+        cur.execute('DROP TABLE IF EXISTS invalids;')
+        cur.execute("""CREATE TABLE IF NOT EXISTS invalids (
+            invalid_serial CHAR(200), INDEX(invalid_serial));""")
+        db.commit()
+    except:
+        flash('Error Dropping and creating invalid table', 'danger')
     # now lets save the invalid serials
     df = read_excel(filepath, 1) # sheet 1 contain failed serial numbers.only one column  exists.
     invalid_counter = 0
     for index, (failed_serial, ) in df.iterrows():
-        #failed_serial = failed_serial_row[0]
-        failed_serial = normalize_string(failed_serial)
-        #query = f'INSERT INTO invalids VALUES("{failed_serial}");'
-        cur.execute('INSERT INTO invalids VALUES (%s);', (failed_serial, ))
-        #cur.execute(query)
-        # TODO: do some more error handling
-        if invalid_counter % 10 == 0:
-            db.commit()
-
         invalid_counter += 1
-    db.commit()
+        try:
+            failed_serial = normalize_string(failed_serial)        
+            cur.execute('INSERT INTO invalids VALUES (%s);', (failed_serial, ))
+            db.commit()
+        except:
+            total_flashes+=1
+            if total_flashes < MAX_FLASH:
+                flash(f'Error inserting line {serial_counter} from failures sheet 1', 'danger')
+            else:
+                flash(f'Too many errors', 'danger')
+
+            
+        
     db.close()
     return (serial_counter, invalid_counter)
 
@@ -276,10 +290,12 @@ def import_database_from_excel(filepath):
 def check_serial(serial):
     ''' this function will check the serial'''
     #conn = sqlite3.connect(config.DATABASE_FILE_PATH)
-    db = MySQLdb.connect(host=config.MYSQL_host, 
-                        user=config.MYSQL_USERNAME, 
-                        passwd=config.MYSQL_PASSWORD, 
-                        db=config.MYSQL_DB_NAME)
+    # db = MySQLdb.connect(host=config.MYSQL_host, 
+    #                     user=config.MYSQL_USERNAME, 
+    #                     passwd=config.MYSQL_PASSWORD, 
+    #                     db=config.MYSQL_DB_NAME)
+    db = get_database_connection()
+
     cur = db.cursor()       
     #cur = conn.cursor()
     #query = f"SELECT * FROM invalids WHERE invalid_serial == '{serial}'"
@@ -329,10 +345,12 @@ def process():
     print(f'message {message} recieved from {sender}') # logging
     status ,answer = check_serial(message)
 
-    db = MySQLdb.connect(host=config.MYSQL_host, 
-                        user=config.MYSQL_USERNAME, 
-                        passwd=config.MYSQL_PASSWORD, 
-                        db=config.MYSQL_DB_NAME)
+    # db = MySQLdb.connect(host=config.MYSQL_host, 
+    #                     user=config.MYSQL_USERNAME, 
+    #                     passwd=config.MYSQL_PASSWORD, 
+    #                     db=config.MYSQL_DB_NAME)
+    db = get_database_connection()
+
     cur = db.cursor() 
     now = datetime.now()
     formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
@@ -346,8 +364,13 @@ def process():
 
     return jsonify(ret), 200
 
+def get_database_connection():
+    return MySQLdb.connect(host=config.MYSQL_host, 
+                        user=config.MYSQL_USERNAME, 
+                        passwd=config.MYSQL_PASSWORD, 
+                        db=config.MYSQL_DB_NAME)
 if __name__ == "__main__":
-    import_database_from_excel('data.xlsx')
+    # import_database_from_excel('data.xlsx')
     # ss = ['','1','A','JM0000000000000000000000000109',
     #     'JM0000000000000000000000000100','JJ0000000000000000000007654321','Jj0000000000000000000000000101']
     
