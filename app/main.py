@@ -18,14 +18,10 @@ ALLOWED_EXTENSIONS = config.ALLOWED_EXTENSIONS
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-limiter = Limiter(
-    app,
-    key_func=get_remote_address)
+limiter = Limiter(app,key_func=get_remote_address)
 
 # config
-app.config.update(
-    SECRET_KEY = config.SECRET_KEY
-)
+app.config.update(SECRET_KEY = config.SECRET_KEY)
 
 # flask-login
 login_manager = LoginManager()
@@ -103,9 +99,6 @@ def home():
 
     cur.execute("SELECT count(*) FROM PROCESSED_SMS WHERE status = 'NOT-FOUND';")
     num_not_found = cur.fetchone()[0]
-
-
-
 
     return render_template('index.html', data = {'smss':smss, 'ok':num_ok, 'failure':num_failure, 'double':num_double, 'not_found':num_not_found})
  
