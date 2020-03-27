@@ -344,6 +344,8 @@ def process(sender, message):
     formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
     cur.execute("INSERT INTO PROCESSED_SMS (status, sender, message, answer, date) VALUES (%s, %s, %s, %s, %s)",
                 (status, sender, message, answer, formatted_date))
+    print(f"INSERT INTO PROCESSED_SMS (status, sender, message, answer, date) VALUES (%s, %s, %s, %s, %s)",
+                (status, sender, message, answer, formatted_date))
     database.commit()
     database.close()
     # send_sms(sender, answer)
