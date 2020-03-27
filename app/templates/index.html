@@ -6,22 +6,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="description" content="" />
         <meta name="author" content="" />
-        <title>Dashboard - SB Admin</title>
-        
-
+        <title>Altech - Hologram</title>
         <link href="/static/css/styles.css" rel="stylesheet" />
         <link href="https://cdn.datatables.net/1.10.20/css/dataTables.bootstrap4.min.css" rel="stylesheet" crossorigin="anonymous" />
         <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/js/all.min.js" crossorigin="anonymous"></script>
     </head>
     <body class="sb-nav-fixed">
         <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
-            <button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button
-            >
-            <img src="{{ url_for('static', filename='logo.png') }}" class="img-fluid" width="300px"/>
-
-            <a class="navbar-brand" href="/"> SMS ADMIN</a>
-
-            <ul class="nav navbar-nav ml-auto">
+            <a class="navbar-brand" href="/">
+            <img src="{{ url_for('static', filename='logo.png') }}" class="img-fluid"/>
+            </a><button class="btn btn-link btn-sm order-1 order-lg-0" id="sidebarToggle" href="#"><i class="fas fa-bars"></i></button>
+	    <!-- Navbar-->
+            <ul class="navbar-nav ml-auto ml-md-0">
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" id="userDropdown" href="#" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"><i class="fas fa-user fa-fw"></i></a>
                     <div class="dropdown-menu dropdown-menu-right" aria-labelledby="userDropdown">
@@ -35,22 +31,20 @@
                 <nav class="sb-sidenav accordion sb-sidenav-dark" id="sidenavAccordion">
                     <div class="sb-sidenav-menu">
                         <div class="nav">
+                                <div class="nav-link h4 mt-4 text-secondary">Altech Hologram</div>
                             <div class="sb-sidenav-menu-heading">Core</div>
-                            <a class="nav-link" href="/"
-                                ><div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
-                                Dashboard
-                            </a>
+                            <a class="nav-link" href="/">
+                            <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
+                                Dashboard</a>
+                            <a class="nav-link" href="/db_status/">
+                            <div class="sb-nav-link-icon"><i class="fa fa-snowplow"></i></div>
+                                DB Status</a>                            
                             <div class="sb-sidenav-menu-heading">User</div>
-                            <a class="nav-link" href="/logout"
-                            ><div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
-                            Logout
-                              </a>
-                            <div class="collapse" id="collapseLayouts" aria-labelledby="headingOne" data-parent="#sidenavAccordion">
-                                <nav class="sb-sidenav-menu-nested nav"><a class="nav-link" href="layout-static.html">Static Navigation</a><a class="nav-link" href="layout-sidenav-light.html">Light Sidenav</a></nav>
-                            </div>
-                            
-                            
-                            
+
+                            <a class="nav-link" href="/logout">                            
+                                <div class="sb-nav-link-icon"><i class="fas fa-sign-out-alt"></i></div>
+                                Logout
+                            </a>
                         </div>
                     </div>
                     <div class="sb-sidenav-footer">
@@ -64,24 +58,20 @@
                     <div class="container-fluid">
                         <h1 class="mt-4">Dashboard</h1>
                         {% include 'alert.html' %}
-
-                        <ol class="breadcrumb mb-4">
-                            <li class="breadcrumb-item active">Dashboard</li>
-                        </ol>
                         <div class="row">
                             <div class="col-xl-3 col-md-6">
                                 <div class="card bg-success text-white mb-4">
                                     <div class="card-body">{{ data.ok }}</div>
                                     <div class="card-footer d-flex align-items-center justify-content-between">
-                                        <div class="small text-white stretched-link" href="#">Total Ok SMSs</div>
+                                        <div class="small text-white">Total OK SMSs</div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-xl-3 col-md-6">
                                 <div class="card bg-primary text-white mb-4">
-                                    <div class="card-body">{{ data.double}}</div>
+                                    <div class="card-body">{{ data.double }}</div>
                                     <div class="card-footer d-flex align-items-center justify-content-between">
-                                        <div class="small text-white stretched-link" href="#">Presented in 2 series SMSs</div>
+                                        <div class="small text-white">Presented in 2 series SMSs</div>
                                     </div>
                                 </div>
                             </div>
@@ -89,16 +79,15 @@
                                 <div class="card bg-warning text-white mb-4">
                                     <div class="card-body">{{ data.failure }}</div>
                                     <div class="card-footer d-flex align-items-center justify-content-between">
-                                        <div class="small text-white stretched-link" href="#">Presented in Failure SMSs</div>
+                                        <div class="small text-white">Presented in failure SMSs</div>
                                     </div>
                                 </div>
                             </div>
-                            
                             <div class="col-xl-3 col-md-6">
                                 <div class="card bg-danger text-white mb-4">
-                                    <div class="card-body">{{ data.not_found }}</div>
+                                    <div class="card-body">{{ data.notfound }}</div>
                                     <div class="card-footer d-flex align-items-center justify-content-between">
-                                        <div class="small text-white stretched-link" href="#">Total Not Found SMSs</div>
+                                        <div class="small text-white">Total Not-Found Messages</div>
                                     </div>
                                 </div>
                             </div>
@@ -106,56 +95,43 @@
                         <div class="row">
                             <div class="col-xl-6">
                                 <div class="card mb-4">
-                                    <div class="card-header"><i class="fas fa-chart-area mr-1"></i>Check One Serial</div>
+                                    <div class="card-header"><i class="fas fa-chart-area mr-1"></i>Check one serial</div>
                                     <div class="card-body">
-                                        <form method="POST" action='/check_one_serial' class="d-none d-md-inline-block form-inline ml-auto mr-0 mr-md-3 my-2 my-md-0">
+                                        <form method="POST" action="/check_one_serial">
                                             <div class="input-group">
-                                                <input class="form-control" type="text" placeholder="Serial To Check" aria-label="Search" 
-                                                                        name="serial"    aria-describedby="basic-addon2" />
+                                                <input class="form-control" type="text" placeholder="Serial to check" aria-label="Search"
+                                                    aria-describedby="basic-addon2" name="serial" />
                                                 <div class="input-group-append">
                                                     <button class="btn btn-primary" type="submit"><i class="fas fa-search"></i></button>
                                                 </div>
                                             </div>
-                                        </form>
-
-                                        
+                                        </form>                                    
                                     </div>
                                 </div>
                             </div>
                             <div class="col-xl-6">
                                 <div class="card mb-4">
                                     <div class="card-header"><i class="fas fa-database mr-1"></i>Update DB with Excel file</div>
-                                    <div class="card-body">
-                                        
-                                            
-                                                <form method=post enctype=multipart/form-data>
-                                                    
-                                                <div class="input-group">
-                                                
-                                                <div class="custom-file">
-                                                    <input type="file" class="custom-file-input" id="inputGroupFile01"
-                                                    aria-describedby="inputGroupFileAddon01" name="file">
-                                                    <label class="custom-file-label" for="inputGroupFile01">Choose file</label>
-                                                    
-                                                </div>
-                                                <div class="input-group-prepend">
-                                                    
-                                                    <span class="input-group" id="inputGroupFileAddon01"><input type="submit" value="Upload"></span>
-                                                </div>
-                                                </div>
-                                                </form>
-                                                
-                                                
-                                                
+                                    <div class="card-body">                                        
+                                        <form method=post enctype=multipart/form-data> 
+                                            <div class="input-group">
+                                            <div class="custom-file">
+                                                <input type="file" class="custom-file-input" id="inputGroupFile01" aria-describedby="inputGroupFileAddon01" name="file">
+                                                <label class="custom-file-label" for="inputGroupFile01">Choose file</label>
+                                            </div>
+                                            <button class="btn btn-primary ml-2" id="inputGroupFileAddon01" type="submit"><i class="fas fa-upload mr-1"></i>Upload</button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                         <div class="card mb-4">
-                            <div class="card-header"><i class="fas fa-table mr-1"></i>DataTable Example</div>
+
+                            <div class="card-header"><i class="fas fa-table mr-1"></i>SMS History</div>
                             <div class="card-body">
                                 <div class="table-responsive">
                                     <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
-
                                         <thead>
                                             <tr>
                                                 <th>Status</th>
@@ -163,10 +139,8 @@
                                                 <th>Message</th>
                                                 <th>Answer</th>
                                                 <th>Date</th>
-
                                             </tr>
                                         </thead>
-                                        
                                         <tfoot>
                                             <tr>
                                                 <th>Status</th>
@@ -178,15 +152,14 @@
                                         </tfoot>
                                         <tbody>
                                             {% for sms in data.smss %}
-                                                <tr>
-                                                    <td>{{sms.status}}</td>
-                                                    <td>{{sms.sender}}</td>
-                                                    <td style="direction: rtl; text-align: center;" >{{sms.message}}</td>
-                                                    <td style="direction: rtl; text-align: right;" >{{sms.answer}}</td>
-                                                    <td>{{sms.date}}</td>
-                                                </tr>
+                                            <tr>
+                                                <td>{{sms.status}}</td>
+                                                <td>{{sms.sender}}</td>
+                                                <td style="direction: rtl; text-align: center">{{sms.message}}</td>
+                                                <td style="direction: rtl; text-align: right;">{{sms.answer}}</td>
+                                                <td>{{sms.date}}</td>
+                                            </tr>
                                             {% endfor %}
-                                            
                                         </tbody>
                                     </table>
                                 </div>
@@ -196,15 +169,8 @@
                 </main>
                 <footer class="py-4 bg-light mt-auto">
                     <div class="container-fluid">
-                        <div class="d-flex align-items-center justify-content-between small">
-                            <div class="text-muted">Copyright &copy; Your Website 2019</div>
-                            <div>
-                                <a href="#">Privacy Policy</a>
-                                &middot;
-                                <a href="#">Terms &amp; Conditions</a>
-                            </div>
-                        </div>
-                    </div>
+                        
+                    </div>  
                 </footer>
             </div>
         </div>
@@ -217,11 +183,12 @@
         <script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js" crossorigin="anonymous"></script>
         <script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js" crossorigin="anonymous"></script>
         <script src="/static/assets/demo/datatables-demo.js"></script>
-        <script>
+	<script>
             $('#inputGroupFile01').on('change',function(){
                     var fileName = $(this).val().split('\\').pop();
                     $(this).next('.custom-file-label').html(fileName);
             })
         </script>
     </body>
+    <!-- based on the https://startbootstrap.com/templates/sb-admin/ template -->
 </html>
