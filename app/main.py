@@ -216,7 +216,7 @@ def import_database_from_excel(filepath):
     serial_counter = 0
     line_number = 0
     total_flashes = 0
-    for index, (line, ref, descripton, start_serial, end_serial, date) in data_frame.iterrows():
+    for _ , (line, ref, descripton, start_serial, end_serial, date) in data_frame.iterrows():
         line_number += 1
         try:
             start_serial = normalize_string(start_serial)
@@ -229,7 +229,7 @@ def import_database_from_excel(filepath):
             total_flashes += 1
             if total_flashes < MAX_FLASH:
                 flash(f'Error inserting line {line_number} from serials sheet 0', 'danger')
-            else:
+            elif total_flashes == MAX_FLASH:
                 flash(f'Too many errors', 'danger')
             
         database.commit()
@@ -256,7 +256,7 @@ def import_database_from_excel(filepath):
             total_flashes += 1
             if total_flashes < MAX_FLASH:
                 flash(f'Error inserting line {line_number} from failures sheet 1', 'danger')
-            else:
+            elif total_flashes == MAX_FLASH:
                 flash(f'Too many errors', 'danger')
    
     database.close()
@@ -268,53 +268,53 @@ def check_serial(serial):
     original_serial = serial
     serial = normalize_string(serial)
     database = get_database_connection()
-    cur = database.cursor()       
-    serial = normalize_string(serial)
     
-    results = cur.execute("SELECT * FROM invalids WHERE invalid_serial = %s", (serial, ))
-    if results > 0:
-        answer = dedent(f"""\
-                {original_serial}
-                این شماره هولوگرام یافت نشد. لطفا دوباره سعی کنید  و یا با واحد پشتیبانی تماس حاصل فرمایید.
-                ساختار صحیح شماره هولوگرام بصورت دو حرف انگلیسی و 7 یا 8 رقم در دنباله آن می باشد. مثال:
-                FA1234567
-                شماره تماس با بخش پشتیبانی فروش شرکت التک:
-                021-22038385""")
-        database.close()
-        return 'FAILURE', answer 
-    results = cur.execute("SELECT * FROM serials WHERE start_serial <= %s and end_serial >= %s", (serial, serial))
+    #cur = database.cursor()       
+    with database.cursor() as cur:
+        results = cur.execute("SELECT * FROM invalids WHERE invalid_serial = %s", (serial, ))
+        if results > 0:
+            answer = dedent(f"""\
+                    {original_serial}
+                    این شماره هولوگرام یافت نشد. لطفا دوباره سعی کنید  و یا با واحد پشتیبانی تماس حاصل فرمایید.
+                    ساختار صحیح شماره هولوگرام بصورت دو حرف انگلیسی و 7 یا 8 رقم در دنباله آن می باشد. مثال:
+                    FA1234567
+                    شماره تماس با بخش پشتیبانی فروش شرکت التک:
+                    021-22038385""")
+            # database.close()
+            return 'FAILURE', answer 
+        results = cur.execute("SELECT * FROM serials WHERE start_serial <= %s and end_serial >= %s", (serial, serial))
 
-    if results > 1:
-        ret = cur.fetchone()
+        if results > 1:
+            ret = cur.fetchone()
+            answer = dedent(f"""\
+                    {original_serial}
+                    این شماره هولوگرام مورد تایید است.
+                    برای اطلاعات بیشتر از نوع محصول با بخش پشتیبانی فروش شرکت التک تماس حاصل فرمایید:
+                    021-22038385""")
+            return 'DOUBLE', answer
+        if results == 1:
+            ret = cur.fetchone()
+            desc = ret[2]
+            ref_number = ret[1]
+            date = ret[5].date()
+            answer = dedent(f"""\
+                    {original_serial}
+                    {ref_number}
+                    {desc}
+                    Hologram date: {date}
+                    Genuine product of Schneider Electric
+                    شماره تماس با بخش پشتیبانی فروش شرکت التک:
+                    021-22038385""")
+            return 'OK', answer
+        # database.close()
         answer = dedent(f"""\
-                {original_serial}
-                این شماره هولوگرام مورد تایید است.
-                برای اطلاعات بیشتر از نوع محصول با بخش پشتیبانی فروش شرکت التک تماس حاصل فرمایید:
-                021-22038385""")
-        return 'DOUBLE', answer
-    if results == 1:
-        ret = cur.fetchone()
-        desc = ret[2]
-        ref_number = ret[1]
-        date = ret[5].date()
-        answer = dedent(f"""\
-                {original_serial}
-                {ref_number}
-                {desc}
-                Hologram date: {date}
-                Genuine product of Schneider Electric
-                شماره تماس با بخش پشتیبانی فروش شرکت التک:
-                021-22038385""")
-        return 'OK', answer
-    database.close()
-    answer = dedent(f"""\
-                {original_serial}
-                این شماره هولوگرام یافت نشد. لطفا دوباره سعی کنید  و یا با واحد پشتیبانی تماس حاصل فرمایید.
-                ساختار صحیح شماره هولوگرام بصورت دو حرف انگلیسی و 7 یا 8 رقم در دنباله آن می باشد. مثال:
-                FA1234567
-                شماره تماس با بخش پشتیبانی فروش شرکت التک:
-                021-22038385""")
-    return 'NOT-FOUND', answer
+                    {original_serial}
+                    این شماره هولوگرام یافت نشد. لطفا دوباره سعی کنید  و یا با واحد پشتیبانی تماس حاصل فرمایید.
+                    ساختار صحیح شماره هولوگرام بصورت دو حرف انگلیسی و 7 یا 8 رقم در دنباله آن می باشد. مثال:
+                    FA1234567
+                    شماره تماس با بخش پشتیبانی فروش شرکت التک:
+                    021-22038385""")
+        return 'NOT-FOUND', answer
 
 @app.route("/check_one_serial", methods=['POST'])
 @login_required
@@ -331,7 +331,7 @@ def check_one_serial():
 def process(sender, message):
     """this is a callback from kavenegar. will get sender and message
     and will check if it is valid. then answer back
-    """
+    # """
     # data = request.form
     # # import pdb; pdb.set_trace()
     # sender = data["from"]
