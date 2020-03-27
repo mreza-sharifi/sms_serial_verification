@@ -209,8 +209,8 @@ def import_database_from_excel(filepath):
             end_serial CHAR(30),
             date DATETIME, INDEX(start_serial, end_serial));""")
         database.commit()
-    except:
-        flash('problem dropping and creating new serial table in database', 'danger')
+    except Exception as e:
+        flash('problem dropping and creating new serial table in database {e}', 'danger')
  
     data_frame = read_excel(filepath, 0)
     serial_counter = 0
@@ -225,10 +225,10 @@ def import_database_from_excel(filepath):
                         (line, ref, descripton, start_serial, end_serial, date))
             database.commit()
             serial_counter += 1
-        except:
+        except Exception as e:
             total_flashes += 1
             if total_flashes < MAX_FLASH:
-                flash(f'Error inserting line {line_number} from serials sheet 0', 'danger')
+                flash(f'Error inserting line {line_number} from serials sheet 0 {e}', 'danger')
             elif total_flashes == MAX_FLASH:
                 flash(f'Too many errors', 'danger')
             
@@ -239,23 +239,23 @@ def import_database_from_excel(filepath):
         cur.execute("""CREATE TABLE IF NOT EXISTS invalids (
             invalid_serial CHAR(200), INDEX(invalid_serial));""")
         database.commit()
-    except:
-        flash('Error Dropping and creating invalid table', 'danger')
+    except Exception as e:
+        flash('Error Dropping and creating invalid table {e}', 'danger')
     # now lets save the invalid serials
     data_frame = read_excel(filepath, 1) # sheet 1 contain failed serial numbers.only one column  exists.
     invalid_counter = 0
     line_number = 0
-    for index, (failed_serial, ) in data_frame.iterrows():
+    for _, (failed_serial, ) in data_frame.iterrows():
         line_number += 1
         try:
             failed_serial = normalize_string(failed_serial)        
             cur.execute('INSERT INTO invalids VALUES (%s);', (failed_serial, ))
             database.commit()
             invalid_counter += 1
-        except:
+        except Exception as e:
             total_flashes += 1
             if total_flashes < MAX_FLASH:
-                flash(f'Error inserting line {line_number} from failures sheet 1', 'danger')
+                flash(f'Error inserting line {line_number} from failures sheet 1 {e}', 'danger')
             elif total_flashes == MAX_FLASH:
                 flash(f'Too many errors', 'danger')
    
