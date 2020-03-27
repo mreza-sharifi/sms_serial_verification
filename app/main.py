@@ -159,7 +159,7 @@ def send_sms(receptor, message):
     data = {"message": message,
             "receptor": receptor}
     res = request.post(data)
-    print(f"message *{message}* sent. status code os {res.status_code}")
+   # print(f"message *{message}* sent. status code os {res.status_code}")
 
 
 def normalize_string(data, fixed_size=30):
@@ -328,15 +328,15 @@ def check_one_serial():
 
 
 @app.route(f'/v1/{CALL_BACK_TOKEN}/process', methods=['POST'])
-def process(sender, message):
+def process():
     """this is a callback from kavenegar. will get sender and message
     and will check if it is valid. then answer back
     # """
-    # data = request.form
-    # # import pdb; pdb.set_trace()
-    # sender = data["from"]
-    # message = data["message"]
-    print(f'message {message} recieved from {sender}') # logging
+    data = request.form
+    # import pdb; pdb.set_trace()
+    sender = data["from"]
+    message = data["message"]
+    #print(f'message {message} recieved from {sender}') # logging
     status, answer = check_serial(message)
     database = get_database_connection()
     cur = database.cursor() 
@@ -344,13 +344,13 @@ def process(sender, message):
     formatted_date = now.strftime('%Y-%m-%d %H:%M:%S')
     cur.execute("INSERT INTO PROCESSED_SMS (status, sender, message, answer, date) VALUES (%s, %s, %s, %s, %s)",
                 (status, sender, message, answer, formatted_date))
-    print(f"INSERT INTO PROCESSED_SMS (status, sender, message, answer, date) VALUES (%s, %s, %s, %s, %s)",
-                (status, sender, message, answer, formatted_date))
+    # print(f"INSERT INTO PROCESSED_SMS (status, sender, message, answer, date) VALUES (%s, %s, %s, %s, %s)",
+                # (status, sender, message, answer, formatted_date))
     database.commit()
     database.close()
-    # send_sms(sender, answer)
-    # ret = {"message": "processed"}
-    # return jsonify(ret), 200
+    send_sms(sender, answer)
+    ret = {"message": "processed"}
+    return jsonify(ret), 200
 
 
 def get_database_connection():
@@ -359,13 +359,13 @@ def get_database_connection():
 
 
 if __name__ == "__main__":
-    import_database_from_excel('data.xlsx')
-    ss = ['','1','A','JM0000000000000000000000000109','JM101'
-    'JM104','JJ321',
-    'Jj000121']
+    # import_database_from_excel('data.xlsx')
+    # ss = ['','1','A','JM0000000000000000000000000109','JM101'
+    # 'JM104','JJ321',
+    # 'Jj000121']
     
-    for s in ss:
-        # print(s,check_serial(s))
-        process('sender', s)
+    # for s in ss:
+    #     # print(s,check_serial(s))
+    #     process('sender', s)
 
     app.run("0.0.0.0", 5000, debug=True)

@@ -11,9 +11,9 @@ PASSWORD = 'root'
 
 UPLOAD_FOLDER = '/tmp'
 ALLOWED_EXTENSIONS = {'xlsx'}
-MYSQL_host='localhost'
-MYSQL_USERNAME='smsmysql'
-MYSQL_PASSWORD='novuq985759867b89e567&*^*&&*^*^%C*&'
+MYSQL_host='smsmysql2'
+MYSQL_USERNAME='root'
+MYSQL_PASSWORD='test'
 MYSQL_DB_NAME = 'smsmysql'
 
 
