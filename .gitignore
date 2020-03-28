@@ -213,3 +213,4 @@ config.py
 ### Fandogh files
 .fandogh/
 *.zip 
+.~lock.*

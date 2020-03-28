@@ -133,7 +133,7 @@ def logout():
 
 # handle login failed
 @app.errorhandler(401)
-def login_problem(error):
+def unathorized(error):
     """check login problem"""
     flash('Login Problem', 'danger')
     return redirect('/login')
