@@ -223,7 +223,7 @@ def import_database_from_excel(filepath):
             end_serial = normalize_string(end_serial)
             cur.execute("INSERT INTO serials VALUES (%s, %s, %s, %s, %s, %s);", 
                         (line, ref, descripton, start_serial, end_serial, date))
-            database.commit()
+            # database.commit()
             serial_counter += 1
         except Exception as e:
             total_flashes += 1
@@ -231,9 +231,12 @@ def import_database_from_excel(filepath):
                 flash(f'Error inserting line {line_number} from serials sheet 0 {e}', 'danger')
             elif total_flashes == MAX_FLASH:
                 flash(f'Too many errors', 'danger')
-            
-        database.commit()
-
+        if line_number % 20 == 0:    
+            try: 
+                database.commit()
+            except Exception as e:
+                flash(f'promblem commiting serials around {line_number} or previous 20 ones. {e}','danger')
+    database.commit()
     try:
         cur.execute('DROP TABLE IF EXISTS invalids;')
         cur.execute("""CREATE TABLE IF NOT EXISTS invalids (
@@ -258,7 +261,12 @@ def import_database_from_excel(filepath):
                 flash(f'Error inserting line {line_number} from failures sheet 1 {e}', 'danger')
             elif total_flashes == MAX_FLASH:
                 flash(f'Too many errors', 'danger')
-   
+        if line_number % 20 == 0:    
+            try: 
+                database.commit()
+            except Exception as e:
+                flash(f'promblem commiting invalid serials into DB around {line_number} or previous 20 ones.{e}','danger')
+    database.commit()
     database.close()
     return (serial_counter, invalid_counter)
 
