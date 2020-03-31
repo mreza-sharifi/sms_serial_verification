@@ -478,4 +478,4 @@ if __name__ == "__main__":
     #     # print(s,check_serial(s))
     #     process('sender', s)
     create_sms_table()
-    app.run("0.0.0.0", 5000, debug=True)
+    app.run("0.0.0.0", 5000, debug=False)
