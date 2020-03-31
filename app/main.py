@@ -122,10 +122,14 @@ def login():
         return render_template('login.html')
 
 
-@app.route("/db_status")
+@app.route("/db_status/<output>/")
 @login_required
-def db_status():
+def db_status(output):
     """will do some sanity checks on the db and will flash the errors"""
+    if output == 'gui':
+        raw_output = False
+    else:
+        raw_output = True
     def colission(s1, e1, s2, e2):
         if s2 <= s1 <= e2:
             return True
@@ -160,19 +164,27 @@ def db_status():
     cur.execute("SELECT id, start_serial, end_serial FROM serials")
 
     raw_data = cur.fetchall()
-
+    if raw_output:
+        all_problems = []
     data = {}
     flashed = 0
     for row in raw_data:
         id_row, start_serial, end_serial = row
+        print(row)
         # print(id, start_serial, end_serial )
         start_serial_alpha , start_serial_digit = seperate(start_serial)
         end_serial_alpha , end_serial_digit = seperate(end_serial)
+        print(start_serial_alpha,start_serial_digit,end_serial_alpha , end_serial_digit )
+
         if start_serial_alpha != end_serial_alpha:
-            if flashed < MAX_FLASH:
-                flash(f'Alpha parts of row {id_row} start with different letters', 'danger')
-            elif flashed == MAX_FLASH:
-                        flash(f'Too many different letters', 'danger')
+            if raw_output:
+                all_problems.append(f'Alpha parts of row {id_row} start with different letters')
+            else:
+                flashed += 1
+                if flashed < MAX_FLASH:
+                    flash(f'Alpha parts of row {id_row} start with different letters', 'danger')
+                elif flashed == MAX_FLASH:
+                    flash(f'Too many different letters', 'danger')
         else:
             if start_serial_alpha not in data:
                 data[start_serial_alpha] = []
@@ -181,18 +193,26 @@ def db_status():
 
 
     for letters in data:
+        # print(letters)
         for i in range(len(data[letters])):
             for j in range(i+1, len(data[letters])):
                 id_row1, ss1, es1 = data[letters][i]
                 id_row2, ss2, es2 = data[letters][j]
+                print(id_row1,id_row2,ss1, es1,ss2, es2)
                 if colission(ss1, es1, ss2, es2):
-                    flashed += 1
-                    if flashed < MAX_FLASH:
-                        flash(f'there is a colission in letter {letters}  between row ids {id_row1} and {id_row2}', 'danger')
-                    elif flashed == MAX_FLASH:
-                        flash(f'Too many collisions', 'danger')
-
-
+                    if raw_output:
+                        all_problems.append(f'there is a colission in letter {letters}  between row ids {id_row1} and {id_row2}')
+                        
+                    else:
+                        flashed += 1
+                        if flashed < MAX_FLASH:
+                            flash(f'there is a colission in letter {letters}  between row ids {id_row1} and {id_row2}', 'danger')
+                        elif flashed == MAX_FLASH:
+                            flash(f'Too many collisions', 'danger')
+    if raw_output:
+        for i in all_problems:
+            flash(i,'dark')
+    print(data)
     return redirect('/')
 
 
@@ -478,4 +498,4 @@ if __name__ == "__main__":
     #     # print(s,check_serial(s))
     #     process('sender', s)
     create_sms_table()
-    app.run("0.0.0.0", 5000, debug=False)
+    app.run("0.0.0.0", 5000, debug=True)
