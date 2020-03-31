@@ -239,27 +239,34 @@ def send_sms(receptor, message):
    # print(f"message *{message}* sent. status code os {res.status_code}")
 
 
-def normalize_string(data, fixed_size=30):
+def normalize_string(serial_number, fixed_size=30):
     """this function will normalize the messages"""
 
-    from_persian_char = '۱۲۳۴۵۶۷۸۹۰'
-    from_arabic_char = '١٢٣٤٥٦٧٨٩٠'
-    to_char = '1234567890'
-    for i in range(len(to_char)):
-        data = data.replace(from_persian_char[i], to_char[i])
-        data = data.replace(from_arabic_char[i], to_char[i])
-    data = data.upper()
-    data = re.sub(r'\W+', '', data) # remove any non alpha numeric  
-    all_alpha = ''
-    all_digit = ''
-    for this_char in data:
-        if this_char.isalpha():
-            all_alpha += this_char
-        elif this_char.isdigit():
-            all_digit += this_char
-    missing_zeros = fixed_size - len(all_digit) - len(all_alpha)
-    data = all_alpha + '0'*missing_zeros + all_digit
-    return data
+    serial_number = _remove_non_alphanum_char(serial_number)# remove any non alpha numeric  
+    serial_number = serial_number.upper()
+   
+    persian_numerals = '۱۲۳۴۵۶۷۸۹۰'
+    arabic_numerals = '١٢٣٤٥٦٧٨٩٠'
+    english_numerals = '1234567890'
+
+    serial_number = _translate_numbers(persian_numerals, english_numerals, serial_number)
+    serial_number = _translate_numbers(arabic_numerals, english_numerals, serial_number)
+
+    all_digit = "".join(re.findall("\d", serial_number))
+    all_alpha = "".join(re.findall("[A-Z]", serial_number))
+
+    missing_zeros = "0" * (fixed_size - len(all_alpha + all_digit))
+
+    return f"{all_alpha}{missing_zeros}{all_digit}"
+
+def _remove_non_alphanum_char(string):
+    return re.sub(r'\W+', '', string)
+
+
+def _translate_numbers(current, new, string):
+    translation_table = str.maketrans(current, new)
+    return string.translate(string)
+
 
 def import_database_from_excel(filepath):
     """gets an excel file name and imports lookup data (data and failures) from it 
@@ -453,6 +460,13 @@ def get_database_connection():
     """get connect to DB"""
     return MySQLdb.connect(host=config.MYSQL_host, user=config.MYSQL_USERNAME, passwd=config.MYSQL_PASSWORD, db=config.MYSQL_DB_NAME, charset='utf8')
 
+def create_sms_table():
+    database = get_database_connection()
+    cur = database.cursor()
+
+    cur.execute("""create table if not exists PROCESSED_SMS (status ENUM('OK', 'FAILURE', 'DOUBLE', 'NOT-FOUND')
+                                                ,sender CHAR(20), message VARCHAR(400), 
+                                                answer VARCHAR(400),date DATETIME ,INDEX(date, status));""")
 
 if __name__ == "__main__":
     # import_database_from_excel('data.xlsx')
@@ -463,5 +477,5 @@ if __name__ == "__main__":
     # for s in ss:
     #     # print(s,check_serial(s))
     #     process('sender', s)
-
-    app.run("0.0.0.0", 5000, debug=False, use_evalex=False)
+    create_sms_table()
+    app.run("0.0.0.0", 5000, debug=True)
