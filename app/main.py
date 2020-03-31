@@ -195,6 +195,11 @@ def db_status():
 
     return redirect('/')
 
+
+
+
+
+
 @app.route("/logout")
 @login_required
 def logout():
@@ -363,7 +368,7 @@ def check_serial(serial):
             # database.close()
             return 'FAILURE', answer 
         results = cur.execute("SELECT * FROM serials WHERE start_serial <= %s and end_serial >= %s", (serial, serial))
-        print("SELECT * FROM serials WHERE start_serial <= %s and end_serial >= %s", (serial, serial))
+        # print("SELECT * FROM serials WHERE start_serial <= %s and end_serial >= %s", (serial, serial))
         if results > 1:
             ret = cur.fetchone()
             answer = dedent(f"""\
@@ -395,6 +400,17 @@ def check_serial(serial):
                     شماره تماس با بخش پشتیبانی فروش شرکت التک:
                     021-22038385""")
         return 'NOT-FOUND', answer
+
+
+@app.route(f"/v1/{config.REMOTE_CALL_API_KEY}/check_one_serial/<serial>", methods=["GET"])
+def check_one_serial_api(serial):
+    """to check whther a serial is valid or not .using api
+    caller should use something like /v1/ABCSECRET/check_one_serial/AA10000"""
+    
+    status, answer = check_serial(serial)
+    ret = {'status': status, 'answer': answer}
+    return jsonify(ret), 200
+
 
 @app.route("/check_one_serial", methods=['POST'])
 @login_required
@@ -448,4 +464,4 @@ if __name__ == "__main__":
     #     # print(s,check_serial(s))
     #     process('sender', s)
 
-    app.run("0.0.0.0", 5000, debug=True)
+    app.run("0.0.0.0", 5000, debug=False, use_evalex=False)
