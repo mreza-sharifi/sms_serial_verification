@@ -27,7 +27,7 @@ limits==1.5.1
 MarkupSafe==1.1.1
 mccabe==0.6.1
 mysqlclient==1.4.6
-numpy==1.18.2
+numpy==1.22.0
 pandas==1.0.3
 passlib==1.7.2
 pycparser==2.20
